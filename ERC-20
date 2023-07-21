@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+// Import the necessary libraries
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+// Declare the contract
+contract MyStableCoin is ERC20 {
+    using SafeERC20 for IERC20;
+
+    address[] public councilMembers; // List of multi-sig council members
+
+    // Modifier to check if the caller is a council member
+    modifier onlyCouncilMembers() {
+        require(isCouncilMember(msg.sender), "Caller is not a council member");
+        _;
+    }
+
+    constructor(uint256 initialSupply) ERC20("MyStableCoin", "MSC") {
+        _mint(msg.sender, initialSupply); // Mint initial supply to the contract deployer
+    }
+
+    function isCouncilMember(address member) private view returns (bool) {
+        for (uint256 i = 0; i < councilMembers.length; i++) {
+            if (councilMembers[i] == member) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function mint(uint256 amount) public onlyCouncilMembers {
+        _mint(msg.sender, amount);
+    }
+
+    address public stableCoinPool; // Address of the stablecoin pool contract
+
+    function claimAgainstPeg(uint256 usdAmount) public {
+        require(usdAmount > 0, "Invalid amount");
+
+        // Calculate the equivalent value in stablecoins based on the peg (1 USD = 1 stablecoin)
+        uint256 collateralAmount = usdAmount;
+        require(collateralAmount <= IERC20(stableCoinPool).balanceOf(msg.sender), "Insufficient collateral");
+
+        // Transfer the stablecoins from the user to the contract
+        IERC20(stableCoinPool).safeTransferFrom(msg.sender, address(this), collateralAmount);
+
+        // Calculate and mint the equivalent stablecoins to the user
+        uint256 mintAmount = collateralAmount;
+        _mint(msg.sender, mintAmount);
+    }
+}
