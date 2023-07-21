@@ -1,0 +1,146 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+// This is the contract for our DAO.
+contract DAO {
+    // Struct to represent a member.
+    struct Member {
+        bool exists; // Whether the member exists.
+        uint256 shares; // Number of voting shares.
+    }
+
+    // Struct to store information about each proposal.
+    struct Proposal {
+        uint proposalIndex; // The proposal index.
+        address proposer; // The address of the member who created the proposal.
+        string description; // The proposal description.
+        uint yesCount; // The number of Tokens that had "yes" votes.
+        uint noCount; // The number of Tokens that had "no" votes.
+        bool approved; // A flag to indicate whether the proposal has been approved or rejected.
+        uint submitTime; // Submit Time for the voting period.
+        bool processed; // A flag to indicate whether the proposal has been processed or not.
+        mapping(address => bool) votedYes; // A specific user Voted Yes on this Proposal.
+        mapping(address => bool) votedNo; // A specific user Voted No on this Proposal.
+        uint membersParticipated; // Number of members who participated in this proposal's voting.
+    }
+
+    // Mapping to store the proposals, with the proposal index as the key.
+    mapping(uint => Proposal) public proposals;
+    mapping(address => Member) public members;
+    uint public memberCount;
+
+    // Minimum number of votes needed for a proposal to pass.
+    uint256 public minimumQuorum;
+
+    // Minimum percentage of yes votes needed for a proposal to pass.
+    uint256 public minimumPercentage;
+
+    // Number of seconds a proposal is active for.
+    uint256 public votingPeriod;
+
+    // Array to store the proposal indices, so that we can iterate over all the proposals.
+    uint[] public proposalIndices;
+
+    address public owner;
+    IERC20 public governanceToken;
+
+    // Events
+    event SubmitProposal(uint256 proposalId, address proposer, string description);
+    event SubmitVote(uint256 proposalId, address voter, bool vote);
+    event ProcessProposal(uint256 proposalId, bool result);
+
+    // Modifier to restrict access to only the contract owner.
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the contract owner can call this function.");
+        _;
+    }
+
+    // Modifier to restrict access to only members.
+    modifier onlyMember() {
+        require(isMember(msg.sender), "Only members can call this function.");
+        _;
+    }
+
+    // Constructor
+    constructor(address _governanceToken, uint _minimumQuorum) {
+        owner = msg.sender;
+        governanceToken = IERC20(_governanceToken);
+        minimumQuorum = _minimumQuorum;
+        memberCount = 1;
+        members[owner].exists = true;
+    }
+
+    // Function to propose a new member.
+    function proposeMember(address newMember) public onlyOwner {
+        require(!members[newMember].exists, "The member already exists.");
+        members[newMember].exists = true;
+        memberCount++;
+    }
+
+   
+    // Function to create a new proposal.
+    function createProposal(string memory description) public onlyMember {
+        uint proposalIndex = proposalIndices.length + 1;
+
+        Proposal storage proposal = proposals[proposalIndex];
+        proposal.proposalIndex = proposalIndex;
+        proposal.proposer = msg.sender;
+        proposal.description = description;
+        proposal.approved = false;
+        proposal.submitTime = block.timestamp;
+
+        proposalIndices.push(proposalIndex);
+
+        emit SubmitProposal(proposalIndex, msg.sender, description);
+    }
+
+    // Function to vote on a proposal.
+    function vote(uint proposalIndex, bool vote) public onlyMember {
+        Proposal storage proposal = proposals[proposalIndex];
+
+        require(governanceToken.balanceOf(msg.sender) >= proposalIndex, "Insufficient token balance to vote.");
+        require(proposal.proposer != address(0), "Proposal does not exist");
+        require(block.timestamp <= proposal.submitTime + votingPeriod, "Voting period has expired");
+        require(!proposal.votedYes[msg.sender] && !proposal.votedNo[msg.sender], "The voter has already voted for the specific proposal");
+
+        if (vote) {
+            proposal.yesCount += governanceToken.balanceOf(msg.sender);
+            proposal.votedYes[msg.sender] = true;
+        } else {
+            proposal.noCount += governanceToken.balanceOf(msg.sender);
+            proposal.votedNo[msg.sender] = true;
+        }
+
+        proposal.membersParticipated++;
+
+        emit SubmitVote(proposalIndex, msg.sender, vote);
+    }
+
+    // Helper function to check if an address is a member of the DAO.
+    function isMember(address addr) public view returns (bool) {
+        return members[addr].exists;
+    }
+
+    // Function to process a proposal and determine the result.
+    function processProposal(uint256 proposalId) public onlyOwner {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.proposer != address(0), "Proposal does not exist");
+        require(!proposal.processed, "Proposal has already been processed");
+        require(block.timestamp >= proposal.submitTime + votingPeriod, "Voting period has not expired yet");
+
+        uint totalVotes = proposal.yesCount + proposal.noCount;
+        uint minimumApproval = (memberCount * minimumQuorum) / 100;
+
+        if (proposal.membersParticipated >= minimumApproval && proposal.yesCount > proposal.noCount) {
+            proposal.approved = true;
+        } else {
+            proposal.approved = false;
+        }
+
+        proposal.processed = true;
+
+    
+    }
+}
