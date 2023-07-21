@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract StableCoin is ERC20, ReentrancyGuard {
+    using SafeMath for uint256;
+
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+
+    function mint(address account, uint256 amount) external nonReentrant {
+        _mint(account, amount);
+    }
+
+    function burn(uint256 amount) external nonReentrant {
+        require(amount > 0, "Invalid amount");
+        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+
+        _burn(msg.sender, amount);
+    }
+}
+
+contract Pool is ReentrancyGuard {
+    StableCoin public stableCoin;
+    address public owner;
+
+    constructor(StableCoin _stableCoin) {
+        stableCoin = _stableCoin;
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can perform this action");
+        _;
+    }
+
+    function addFunds(uint256 amount) external onlyOwner {
+        stableCoin.mint(address(this), amount);
+    }
+
+    function withdrawFunds(uint256 amount) external onlyOwner nonReentrant {
+        require(stableCoin.balanceOf(address(this)) >= amount, "Insufficient funds in the pool");
+        _transfer(address(this), msg.sender, amount);
+    }
+}
