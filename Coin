@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract INT is ERC20 {
+    uint256 public USDT;
+    address public weuFoundation;
+
+    constructor() ERC20("INT Token", "INPUT") {
+        weuFoundation = msg.sender;
+    }
+
+    modifier onlyWEUFoundation() {
+        require(msg.sender == weuFoundation, "Only WEU Foundation can perform this action");
+        _;
+    }
+
+    function mint(address account, uint256 amount) external onlyWEUFoundation {
+        _mint(account, amount);
+    }
+
+    function burn(uint256 amount) external onlyWEUFoundation {
+        _burn(msg.sender, amount);
+    }
+
+    function setUSDValue(uint256 usdValue) external onlyWEUFoundation {
+        USDT = usdValue;
+        require(usdValue > 0, "Amount must be greater than zero");
+    }
+
+    function convertToUSD(uint256 INT_Token) external view returns (uint256) {
+        require(USDT > 0, "USD value has not been set yet");
+        return INT_Token * USDT;
+    }
+}
