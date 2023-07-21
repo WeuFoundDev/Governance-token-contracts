@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract INT is ERC20 {
 
-    uint USDT;
     address public weuFoundation;
 
     constructor() ERC20("INT Token", "INPUT") {
@@ -25,11 +24,18 @@ contract INT is ERC20 {
         _burn(msg.sender, amount);
     }
 
-    function convertToUSDT(uint256 INT_Token) external onlyWEUFoundation{
-        
-        USDT=INT_Token;
-        require(INT_Token >0, "Amount must be greater than zero");
-        
-    
+    function convertToUSDT(uint256 INT_Token) external onlyWEUFoundation {
+        require(INT_Token > 0, "Amount must be greater than zero");
+        require(INT_Token <= balanceOf(msg.sender), "Insufficient balance");
+
+        // Perform the conversion logic to USDT here
+        // For example, transfer USDT tokens to the msg.sender based on the INT_Token value
+
+        // Assuming 1 INT Token is equal to 1 USDT (just for illustration)
+        uint256 USDTAmount = INT_Token;
+        _burn(msg.sender, INT_Token);
+
+        // Perform the logic to transfer USDT tokens to msg.sender
+        // For example, _transfer(address(this), msg.sender, USDTAmount);
     }
 }
