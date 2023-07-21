@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+contract MyStableCoin is ERC20 {
+    using SafeMath for uint256;
+
+    // Define variables related to the burning pool and incentives
+    uint256 public constant TIMECHAIN_PERIOD = 1 weeks;
+    uint256 public totalMinted;
+    uint256 public totalBurned;
+    uint256 public burningPoolLTV; // LTV in percentage, e.g., 1000 represents 10.00%
+    uint256 public gdiPercentage; // GDI in percentage, e.g., 1000 represents 10.00%
+
+    // Address of the protocol pool where burned tokens are transferred
+    address public protocolPool;
+
+    // Address of the council members who can mint new tokens
+    address[] public councilMembers;
+
+    // Modifier to check if the caller is a council member
+    modifier onlyCouncilMembers() {
+        require(isCouncilMember(msg.sender), "Caller is not a council member");
+        _;
+    }
+
+    constructor(uint256 initialSupply, uint256 _gdiPercentage, address _protocolPool) ERC20("MyStableCoin", "MSC") {
+        _mint(msg.sender, initialSupply);
+        totalMinted = initialSupply;
+        gdiPercentage = _gdiPercentage;
+        protocolPool = _protocolPool;
+    }
+
+    function isCouncilMember(address member) private view returns (bool) {
+        for (uint256 i = 0; i < councilMembers.length; i++) {
+            if (councilMembers[i] == member) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function mint(uint256 amount) public onlyCouncilMembers {
+        _mint(msg.sender, amount);
+        totalMinted = totalMinted.add(amount);
+    }
+
+    function burn(uint256 amount) public {
+        require(amount > 0, "Invalid amount");
+        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+
+        _burn(msg.sender, amount);
+        totalBurned = totalBurned.add(amount);
+
+        // Calculate the LTV based on the remaining TIMECHAIN periods
+        uint256 remainingTimechains = totalBurned.div(TIMECHAIN_PERIOD);
+        if (remainingTimechains == 0) {
+            burningPoolLTV = 0;
+        } else {
+            burningPoolLTV = totalBurned.mul(10000).div(remainingTimechains);
+        }
+
+        // Calculate the slashing percentage for GDI
+        uint256 remainingPeriods = totalMinted.div(TIMECHAIN_PERIOD).sub(remainingTimechains);
+        uint256 slashPercentage = remainingPeriods.mul(gdiPercentage).div(10000);
+
+        // Slash the GDI from the burning pool
+        uint256 slashAmount = totalBurned.mul(slashPercentage).div(10000);
+        _transfer(protocolPool, msg.sender, slashAmount);
+    }
+}
