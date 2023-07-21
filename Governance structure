@@ -61,25 +61,4 @@ contract WEUFoundation is AccessControl {
         emit FoundationFunded(amount);
     }
 
-    function removeMember(address committeeAddress, _GovernanceModel model) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(members[model][committeeAddress].exists, "Member does not exist in the specified governance model.");
-        require(msg.sender == committeeAddress, "Only the committee member can be removed on consensus.");
-
-        Role role = members[model][committeeAddress].role;
-        uint256 shares = members[model][committeeAddress].shares;
-
-        delete members[model][committeeAddress];
-        totalShares[role] -= shares;
-
-        // Remove committeeAddress from committeeAddresses array
-        for (uint256 i = 0; i < committeeAddresses.length; i++) {
-            if (committeeAddresses[i] == committeeAddress) {
-                committeeAddresses[i] = committeeAddresses[committeeAddresses.length - 1];
-                committeeAddresses.pop();
-                break;
-            }
-        }
-
-        emit CommitteeMemberRemoved(committeeAddress, model, role);
     }
-}
