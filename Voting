@@ -79,13 +79,7 @@ contract DAO {
         memberCount++;
     }
 
-    // Function to remove a member.
-    function removeMember(address existingMember) public onlyOwner {
-        require(members[existingMember].exists, "The member doesn't exist.");
-        members[existingMember].exists = false;
-        memberCount--;
-    }
-
+   
     // Function to create a new proposal.
     function createProposal(string memory description) public onlyMember {
         uint proposalIndex = proposalIndices.length + 1;
