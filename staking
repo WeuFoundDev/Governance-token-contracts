@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract StakingPool is Ownable, ReentrancyGuard {
+    IERC20 public intToken; // The ERC20 token used for staking and rewards.
+    mapping(address => uint256) public stakedBalance; // Keeps track of the staked balance for each user.
+    mapping(address => uint256) public rewardBalance; // Keeps track of the accumulated rewards for each user.
+    uint256 public totalStaked; // Total amount of tokens staked in the pool.
+
+    event Staked(address indexed account, uint256 amount); // Event emitted when a user stakes tokens.
+    event Unstaked(address indexed account, uint256 amount); // Event emitted when a user unstakes tokens.
+    event Claimed(address indexed account, uint256 amount); // Event emitted when a user claims their rewards.
+
+    constructor(address _intToken) {
+        intToken = IERC20(_intToken); // Initialize the staking pool with the address of the INT token.
+    }
+
+    // Function to allow users to stake their INT tokens in the pool.
+    function stake(uint256 amount) external nonReentrant {
+        require(amount > 0, "Invalid amount");
+        intToken.transferFrom(msg.sender, address(this), amount); // Transfer tokens from the user to the pool.
+
+        stakedBalance[msg.sender] += amount; // Update the staked balance for the user.
+        totalStaked += amount; // Update the total staked amount in the pool.
+
+        emit Staked(msg.sender, amount); // Emit the Staked event.
+    }
+
+    // Function to allow users to unstake their INT tokens from the pool.
+    function unstake(uint256 amount) external nonReentrant {
+        require(amount > 0, "Invalid amount");
+        require(stakedBalance[msg.sender] >= amount, "Insufficient staked balance");
+
+        stakedBalance[msg.sender] -= amount; // Update the staked balance for the user.
+        totalStaked -= amount; // Update the total staked amount in the pool.
+
+        intToken.transfer(msg.sender, amount); // Transfer tokens from the pool back to the user.
+
+        emit Unstaked(msg.sender, amount); // Emit the Unstaked event.
+    }
+
+    // Function for users to claim their accumulated rewards.
+    function claim() external nonReentrant {
+        uint256 reward = calculateReward(msg.sender); // Calculate the rewards for the user.
+        require(reward > 0, "No rewards to claim");
+
+        rewardBalance[msg.sender] = 0; // Reset the reward balance for the user.
+
+        // Transfer the rewards to the user.
+        intToken.transfer(msg.sender, reward);
+
+        emit Claimed(msg.sender, reward); // Emit the Claimed event.
+    }
+
+    // Internal function to calculate the rewards for a user.
+    function calculateReward(address account) internal view returns (uint256) {
+        // In a real staking pool, this function would calculate the rewards based on various factors like
+        // the amount staked, staking duration, and other parameters. For simplicity, we return 0 as rewards here.
+        return 0;
+    }
+
+    // Function to get the staked balance of a user.
+    function getStakedBalance(address account) external view returns (uint256) {
+        return stakedBalance[account];
+    }
+
+    // Function to get the total staked amount in the pool.
+    function getTotalStaked() external view returns (uint256) {
+        return totalStaked;
+    }
+}
