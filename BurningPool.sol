@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./INT.sol";
 
 contract BurningPool is ReentrancyGuard {
-    using SafeMath for uint256;
+    using SafeMath for uint8;
 
     INT public intToken;
     mapping(address => uint256) public usdBalance;
