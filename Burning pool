@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract INT is ERC20, Ownable {
+    constructor() ERC20("INT Token", "INT") {
+        _mint(msg.sender, 1000000 * 10**decimals());
+    }
+
+    // Function to mint new tokens to a specified account.
+    function mint(address account, uint256 amount) external onlyOwner {
+        _mint(account, amount);
+    }
+
+    // Function to burn tokens from the sender's account.
+    function burn(uint256 amount) external {
+        require(amount > 0, "Invalid amount");
+        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+
+        _burn(msg.sender, amount);
+    }
+}
+
+contract BurningPool is ReentrancyGuard {
+    using SafeMath for uint256;
+
+    INT public intToken;
+    mapping(address => uint256) public usdBalance;
+
+    constructor() {
+        intToken = new INT();
+    }
+
+    // Function to burn user's INT tokens and claim USD tokens based on a fixed conversion rate of 1 INT = 1 USD.
+    function burnAndClaimUSD(uint256 amount) external nonReentrant {
+        require(amount > 0, "Invalid amount");
+        require(intToken.balanceOf(msg.sender) >= amount, "Insufficient INT balance");
+
+        // Burn the user's INT tokens
+        intToken.burn(amount);
+
+        // Claim USD tokens based on the fixed conversion rate of 1 INT = 1 USD
+        usdBalance[msg.sender] = usdBalance[msg.sender].add(amount);
+    }
+
+    // Function to withdraw claimed USD balance
+    function withdrawUSD() external nonReentrant {
+        uint256 usdAmount = usdBalance[msg.sender];
+        require(usdAmount > 0, "No USD balance to withdraw");
+
+        // Implement a transfer function to transfer USD tokens to the user's address
+        // For example:
+        // usdToken.transfer(msg.sender, usdAmount);
+
+        // Once the transfer is successful, reset the user's USD balance to zero
+        usdBalance[msg.sender] = 0;
+    }
+}
