@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract INT is ERC20, ReentrancyGuard {
+    using SafeMath for uint256;
+
+    constructor() ERC20("INT Token", "INT") {
+        _mint(msg.sender, 1000000 * 10**decimals());
+    }
+
+    // Function to mint new tokens to a specified account.
+    // Only the contract owner can call this function.
+    function mint(address account, uint256 amount) external nonReentrant onlyOwner {
+        _mint(account, amount);
+    }
+
+    // Modifier to restrict access to only the contract owner.
+    modifier onlyOwner() {
+        require(msg.sender == owner(), "Only the contract owner can call this function.");
+        _;
+    }
+}
