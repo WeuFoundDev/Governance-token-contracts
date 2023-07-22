@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./INT.sol";
 
 contract BurningPool is ReentrancyGuard {
-    using SafeMath for uint8;
+    using SafeMath for uint256;
 
     INT public intToken;
     mapping(address => uint256) public usdBalance;
@@ -17,7 +17,10 @@ contract BurningPool is ReentrancyGuard {
 
     function burnAndClaimUSD(uint256 amount) external nonReentrant {
         require(amount > 0, "Invalid amount");
-        require(intToken.balanceOf(msg.sender) >= amount, "Insufficient balance");
+        require(
+            intToken.balanceOf(msg.sender) >= amount,
+            "Insufficient balance"
+        );
 
         intToken.burn(amount);
         uint256 usdAmount = convertInputToUSD(amount);
