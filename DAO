@@ -1,0 +1,193 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+// This is the contract for our DAO.
+contract DAO is Ownable, ReentrancyGuard {
+    // ... (existing code for the DAO)
+
+    IERC20 public governanceToken;
+    ERC20Votes public mintingToken; // Minting token (INT)
+
+    // Member-related variables
+    uint256 public minimumQuorum;
+    uint256 public minimumConsensus; // 66% consensus required for adding a new member
+    uint256 public voteDuration; // Time duration (in seconds) for voting on a new member
+    uint public memberCount;
+
+    mapping(address => Member) public members;
+    mapping(address => bool) public isMember; // Mapping to keep track of whether an address is a member
+
+    // Foundation committees
+    mapping(bytes32 => bool) public foundationCommittees;
+
+    // Struct to represent a member.
+    struct Member {
+        bool exists; // Whether the member exists.
+        uint256 shares; // Number of voting shares.
+    }
+
+    // Proposal-related variables
+    uint256 public proposalCount;
+    struct Proposal {
+        address proposer;
+        string proposalType;
+        string proposalDescription;
+        uint256 voteEndTime;
+        uint256 votesInSupport;
+        uint256 votesOpposed;
+        bool executed;
+        bool proposalPassed;
+        mapping(address => bool) hasVoted;
+    }
+    mapping(uint256 => Proposal) public proposals;
+
+    // Consensus mechanism
+    uint256 public requiredCouncilMembers;
+
+    // Constructor
+    constructor(
+        address _governanceToken,
+        uint256 _minimumQuorum,
+        uint256 _minimumConsensus,
+        uint256 _voteDuration,
+        uint256 _requiredCouncilMembers,
+        address _mintingToken,
+        address _owner
+    ) Ownable() {
+        require(_owner != address(0), "Invalid owner address");
+
+        governanceToken = IERC20(_governanceToken);
+        mintingToken = ERC20Votes(_mintingToken);
+        minimumQuorum = _minimumQuorum;
+        minimumConsensus = _minimumConsensus;
+        voteDuration = _voteDuration;
+        requiredCouncilMembers = _requiredCouncilMembers;
+
+        members[_owner].exists = true;
+        isMember[_owner] = true; // Mark the owner as a member
+
+        // Foundation committees
+        foundationCommittees[keccak256("council")] = true;
+        foundationCommittees[keccak256("technical")] = true;
+        foundationCommittees[keccak256("research")] = true;
+    }
+
+    // Function to add a new member to the DAO
+    function addMember(address newMember) public returns (bool) {
+        require(newMember != address(0), "Invalid member address");
+        require(!isMember[newMember], "Address is already a member");
+
+        // Perform any additional checks or conditions before adding the new member
+        // (e.g., check if the DAO has sufficient funds to issue shares)
+
+        // Start the voting process
+        return voteForMember(newMember);
+    }
+
+    // Function to vote for a new member
+    function voteForMember(address newMember) internal returns (bool) {
+        uint256 voteEndTime = block.timestamp + voteDuration;
+        uint256 votesInSupport = 0;
+        uint256 votesOpposed = 0;
+
+        // Members can vote in support or opposition during the voting period
+        while (block.timestamp < voteEndTime) {
+            // Assume voting mechanism here. For demonstration, we'll just use the owner's vote.
+            if (msg.sender == owner()) {
+                votesInSupport++;
+            } else {
+                votesOpposed++;
+            }
+        }
+
+        // Check if there's a consensus to add the new member
+        require((votesInSupport * 100) >= (votesInSupport + votesOpposed) * minimumConsensus, "66% consensus not reached");
+
+        members[newMember].exists = true;
+        isMember[newMember] = true;
+        // Assign shares to the new member (you may customize this logic)
+        members[newMember].shares = 1;
+
+        memberCount++;
+
+        return true;
+    }
+
+    // Function to create a new proposal
+    function createProposal(string memory proposalType, string memory proposalDescription) public {
+        require(isMember[msg.sender], "You must be a member to create a proposal");
+
+        uint256 voteEndTime = block.timestamp + voteDuration;
+        Proposal storage newProposal = proposals[proposalCount];
+        newProposal.proposer = msg.sender;
+        newProposal.proposalType = proposalType;
+        newProposal.proposalDescription = proposalDescription;
+        newProposal.voteEndTime = voteEndTime;
+        newProposal.votesInSupport = 0;
+        newProposal.votesOpposed = 0;
+        newProposal.executed = false;
+        newProposal.proposalPassed = false;
+
+        proposalCount++;
+    }
+
+    // Function to vote on a proposal
+    function voteOnProposal(uint256 proposalId, bool inSupport) public {
+        require(isMember[msg.sender], "You must be a member to vote on a proposal");
+        require(proposalId < proposalCount, "Invalid proposal ID");
+        Proposal storage proposal = proposals[proposalId];
+        require(!proposal.hasVoted[msg.sender], "You have already voted on this proposal");
+        require(block.timestamp < proposal.voteEndTime, "Voting period has ended");
+
+        if (inSupport) {
+            proposal.votesInSupport++;
+        } else {
+            proposal.votesOpposed++;
+        }
+
+        proposal.hasVoted[msg.sender] = true;
+    }
+
+    // Function to execute a proposal
+    function executeProposal(uint256 proposalId) public {
+        require(proposalId < proposalCount, "Invalid proposal ID");
+        Proposal storage proposal = proposals[proposalId];
+        require(!proposal.executed, "Proposal has already been executed");
+        require(block.timestamp >= proposal.voteEndTime, "Voting period has not ended");
+
+        // Check if the proposal has enough support to pass
+        uint256 totalVotes = proposal.votesInSupport + proposal.votesOpposed;
+        require((proposal.votesInSupport * 100) >= totalVotes * minimumConsensus, "Proposal did not pass");
+
+        // Execute the proposal (you can add custom logic for different types of proposals)
+        proposal.executed = true;
+        proposal.proposalPassed = true;
+    }
+
+    // ... (existing code for checking if an address is a member)
+
+    // ... (existing code for processing a proposal)
+
+    // Incentivization protocol: An example function to distribute tokens as incentives to members.
+    function distributeIncentives(address[] memory recipients, uint256[] memory amounts) public onlyOwner {
+        require(recipients.length == amounts.length, "Lengths of recipients and amounts arrays do not match");
+
+        for (uint256 i = 0; i < recipients.length; i++) {
+            address recipient = recipients[i];
+            uint256 amount = amounts[i];
+
+            require(isMember[recipient], "Recipient is not a member");
+
+            // Perform any additional checks or conditions before distributing incentives
+            // (e.g., check if the DAO has sufficient funds to distribute)
+
+            // Distribute incentives directly from the DAO's governance token balance
+            governanceToken.transfer(recipient, amount);
+        }
+    }
+}
