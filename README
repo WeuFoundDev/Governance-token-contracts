@@ -1,28 +1,33 @@
 Introduction
+
 This repository contains the smart contracts for the Minting, Burning, Staking, and USD Stable Coin functionality within our decentralized ecosystem. These contracts are implemented using Solidity and follow the ERC20 standard for token functionalities.
 
 Contracts Overview
+
 INT Token Contract
+
 The INT contract is an ERC20 token named "INT" with the symbol "INT".
 It has a total supply of 1,000,000 INT tokens and is owned by the deployer.
 The owner has the ability to mint new tokens and burn existing ones.
+
 BurningPool Contract
+
 The BurningPool contract enables users to burn their INT tokens and claim an equivalent amount in USD Stable Coin.
 It ensures that the burning process is non-reentrant to prevent reentrancy attacks.
 The conversion rate from INT to USD is fixed at 1:1.
+
 StakingPool Contract
+
 The StakingPool contract allows users to stake their INT tokens and earn rewards.
 It also implements non-reentrancy to enhance security during staking.
 MintingPool Contract
+
 The MintingPool contract facilitates the minting of new INT tokens by issue solvers.
 90% of the reward goes to developers, and 10% goes to verifiers.
 The minting process is non-reentrant to avoid reentrancy vulnerabilities.
 Security
+
 All contracts are built using the latest version of Solidity (0.8.9) and follow best practices to ensure security and reliability.
 The contracts use the OpenZeppelin library, which provides additional security features like SafeMath and ReentrancyGuard.
 License
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-
-
-
