@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract BurningPool is Ownable {
+    using SafeMath for uint256;
+
+    address public _owner;
+    uint256 public totalAssets = 1000000 * (10 ** 18); // 1,000,000 INTs with 18 decimal places
+    uint256 public mintingPoolLTV;
+    uint256 public burnoutPercentage;
+    uint256 public firstBurnoutPercentage;
+    uint256 public inputsMultiplier;
+    uint256 public remainingTIMECHAINPeriods;
+    uint256 public slashPercentage = 200; // 2% initially
+    bool public isProtocolVaultInitialized;
+    mapping(address => bool) public allowedAddresses;
+
+
+    modifier onlyAllowed() {
+        require(allowedAddresses[msg.sender], "Caller is not allowed.");
+        _;
+    }
+
+    constructor(
+        uint256 _mintingPoolLTV,
+        uint256 _burnoutPercentage,
+        uint256 _firstBurnoutPercentage,
+        uint256 _inputsMultiplier,
+        uint256 _TIMECHAINPeriods
+    ) {
+        _owner = msg.sender;
+        mintingPoolLTV = _mintingPoolLTV;
+        burnoutPercentage = _burnoutPercentage;
+        firstBurnoutPercentage = _firstBurnoutPercentage;
+        inputsMultiplier = _inputsMultiplier;
+        remainingTIMECHAINPeriods = _TIMECHAINPeriods;
+        isProtocolVaultInitialized = false;
+    }
+
+    function addAllowedAddress(address _address) external onlyOwner {
+        allowedAddresses[_address] = true;
+    }
+
+    function removeAllowedAddress(address _address) external onlyOwner {
+        allowedAddresses[_address] = false;
+    }
+
+    function setTotalAssets(uint256 _totalAssets) external onlyOwner {
+        totalAssets = _totalAssets;
+    }
+
+    function burnFromGDV(uint256 _amount) external onlyAllowed {
+        require(!isProtocolVaultInitialized, "Protocol Vault already initialized.");
+
+        // Calculate the burnout amount based on the burnout percentage
+        uint256 burnoutAmount = _amount.mul(burnoutPercentage).div(100);
+
+        // Calculate the slashing amount based on the slashing rate
+        uint256 slashingAmount = _amount.mul(slashPercentage).div(10000);
+
+        // Update the total assets and remaining TIMECHAIN periods
+        totalAssets = totalAssets.sub(burnoutAmount).sub(slashingAmount);
+        remainingTIMECHAINPeriods--;
+
+        // Check if the remaining TIMECHAIN periods have reached 0
+        if (remainingTIMECHAINPeriods == 0) {
+            isProtocolVaultInitialized = true;
+        }
+    }
+
+    function withdrawFunds(uint256 _amount) external onlyOwner {
+        // Ensure that the owner can only withdraw funds
+        require(_amount <= address(this).balance, "Insufficient contract balance.");
+        payable(_owner).transfer(_amount);
+    }
+
+    function withdrawTokens(address _tokenAddress, uint256 _amount) external onlyOwner {
+        // Ensure that the owner can only withdraw tokens
+        IERC20 token = IERC20(_tokenAddress);
+        uint256 balance = token.balanceOf(address(this));
+        require(_amount <= balance, "Insufficient token balance.");
+        token.transfer(_owner, _amount);
+    }
+
+    // ... (other functions and security logic)
+}
+
