@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+contract MintingPool is Ownable {
+    using SafeMath for uint256;
+
+    uint256 public timechain = 50;
+    uint256 public intToken = 1000000;
+    uint256 public slashPercentage = 20000000; // 2% represented as 2 * 10^6 (6 decimal places)
+
+    // Function to burn and claim INT tokens based on the minting pool algorithm
+    function burnAndClaim() external onlyOwner returns (uint256) {
+        // Calculate the slashing amount for the current timechain
+        uint256 slashingAmount = intToken.mul(slashPercentage).div(10**8); // Divide by 10**8 due to 6 decimal places
+
+        // Update the INT token balance in the minting pool after slashing
+        intToken = intToken.sub(slashingAmount);
+
+        // Decrease the timechain period
+        timechain--;
+
+        // If the timechain reaches zero, set the intToken balance to zero
+        if (timechain == 0) {
+            intToken = 0;
+        }
+
+        return intToken;
+    }
+}
