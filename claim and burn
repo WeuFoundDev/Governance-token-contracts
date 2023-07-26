@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+contract MintingPool is Ownable {
+    using SafeMath for uint256;
+
+    uint256 public timechain = 50;
+    uint256 public intToken = 1000000;
+    uint256 public slashPercentage = 20000000; // 2% represented as 2 * 10^6 (6 decimal places)
+
+    // Function to burn and claim INT tokens based on the minting pool algorithm
+    function burnAndClaim() external onlyOwner returns (uint256) {
+        // Calculate the slashing amount for the current timechain
+        uint256 slashingAmount = intToken.mul(slashPercentage).div(10**8); // Divide by 10**8 due to 6 decimal places
+
+        // Update the INT token balance in the minting pool after slashing
+        intToken = intToken.sub(slashingAmount);
+
+        // Decrease the timechain period
+        timechain--;
+
+        // If the timechain reaches zero, set the intToken balance to zero
+        if (timechain == 0) {
+            intToken = 0;
+        }
+
+        return intToken;
+    }
+
+    // Function to add investment/grant/contribution to the burning pool
+    function addToBurningPool(uint256 _amount) external onlyOwner {
+        // Ensure that the LTV does not exceed 110%
+        require(calculateLTV().add(_amount) <= 110, "LTV exceeds 110%.");
+
+        // Add the investment to the burning pool
+        intToken = intToken.add(_amount);
+    }
+
+    // Function to calculate the Loan-to-Value (LTV) ratio
+    function calculateLTV() public view returns (uint256) {
+        return intToken.mul(100).div(getTotalAssetValue());
+    }
+
+    // Function to get the total asset value in the burning pool
+    function getTotalAssetValue() public pure returns (uint256) {
+        // Replace this with the logic to calculate the total asset value of the burning pool
+        // For simplicity, I'm returning a fixed value of 1000000 here
+        return 1000000;
+    }
+
+    // Function to increase the slash percentage and reset the timechain
+    function increaseSlashPercentageAndResetTimechain(uint256 _newSlashPercentage) external onlyOwner {
+        require(_newSlashPercentage > slashPercentage, "New slash percentage should be greater than the current one.");
+
+        // Update the slash percentage
+        slashPercentage = _newSlashPercentage;
+
+        // Reset the timechain to 50
+        timechain = 50;
+    }
+}
