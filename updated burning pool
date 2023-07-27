@@ -127,6 +127,7 @@ contract TimechainProtocol is ReentrancyGuard{
 
     // Function to get the balance of INT available to spend at the start of the current timechain
     function getBalance() external view returns (uint256) {
+        require(_protocolAddress!=address(0),"The address cannot be equal to zero address");       
         BurningPool storage pool = BurningPools[msg.sender];
         return pool.totalInputs - pool.totalslashedAmount;
     }
