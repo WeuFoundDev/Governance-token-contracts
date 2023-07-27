@@ -104,6 +104,7 @@ contract TimechainProtocol is ReentrancyGuard{
         uint completedTimeChains = (block.timestamp - pool.startingBlock) / timechainInterval;
         uint finalTimeChainsLeft = completedTimeChains - (50 - pool.timeChainsLeft);
         uint256 slashedAmount;
+        
 
         for (uint i = 0; i <= pool.noOfinvestments; i++) {
             uint amountStaked = pool.amountStaked[i + 1];
@@ -132,14 +133,23 @@ contract TimechainProtocol is ReentrancyGuard{
         return pool.totalInputs - pool.totalslashedAmount;
     }
 
-    function burnAndClaim(uint256 amount) external nonReentrant {
-        require(amount != 0, "The amount cannot be equal to zero");
-        require(intToken.balanceOf(msg.sender) >= amount, "Not sufficient amount in your wallet");
-        require(IERC20(stableCoin1).balanceOf(address(this)) >= amount || IERC20(stableCoin2).balanceOf(address(this)) >= amount || IERC20(stableCoin3).balanceOf(address(this)) >= amount || IERC20(stableCoin4).balanceOf(address(this)) >= amount, "No sufficient amount in the pool");
-        address currentStableCoin = findGreatest(stableCoin1, stableCoin2, stableCoin3, stableCoin4);
-        intToken.burn(amount);
-        IERC20(currentStableCoin).transfer(msg.sender, amount);
-    }
+function burnAndClaim(uint256 amount) external nonReentrant {
+    require(amount != 0, "The amount cannot be equal to zero");
+    require(intToken.balanceOf(msg.sender) >= amount, "Not sufficient amount in your wallet");
+
+    BurningPool storage pool = BurningPools[msg.sender];
+
+    // Check if the timechain interval has passed
+    require(block.timestamp >= pool.startingBlock + timechainInterval, "Cannot claim before the timechain interval is over");
+
+    address currentStableCoin = findGreatest(stableCoin1, stableCoin2, stableCoin3, stableCoin4);
+    intToken.burn(amount);
+    IERC20(currentStableCoin).transfer(msg.sender, amount);
+
+    // Update the last timechain to the current block timestamp
+    pool.startingBlock = block.timestamp;
+}
+
 
     function findGreatest(address _stableCoin1, address _stableCoin2, address _stableCoin3, address _stableCoin4) public view returns (address) {
         // Using if-else statements
