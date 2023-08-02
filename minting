@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract minting {
+    address public owner;
+    uint256 public totalSupply;
+    uint256 public burningPool; // INT set aside for minting for a particular protocol
+    uint256 public timechain; // Number of remaining timechains
+    uint256 public timechainDuration; // Duration of each timechain in seconds
+    mapping(address => uint256) public balanceOf;
+    mapping(address => uint256) public burnedAmount;
+    mapping(address => string) public zkId;
+    mapping(address => bool) public isFixedAlphaContributor; // Changed "isCoreDev" to "isFixedAlphaContributor"
+    mapping(address => bool) public isVariableSeagullContributor; // Changed "isVarDev" to "isVariableSeagullContributor"
+    mapping(address => bool) public isGrantRecipient; // Added mapping for grant recipients
+
+    event Minted(address indexed account, uint256 amount);
+    event Burned(address indexed account, uint256 amount);
+  
+
+    constructor(uint256 initialSupply) {
+        owner = msg.sender;
+        totalSupply = initialSupply;
+        balanceOf[msg.sender] = initialSupply;
+        burningPool = 0;
+        timechain = 50;
+        timechainDuration = 7 days; // Set the duration of each timechain to 7 days
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the contract owner can call this function");
+        _;
+    }
+
+    modifier onlyFixedAlphaContributor() { // Changed "onlyCoreDev" to "onlyFixedAlphaContributor"
+        require(isFixedAlphaContributor[msg.sender], "Only FIXED |Alpha| contributors can call this function");
+        _;
+    }
+
+    modifier onlyVariableSeagullContributor() { // Changed "onlyDev" to "onlyVariableSeagullContributor"
+        require(isVariableSeagullContributor[msg.sender], "Only VARIABLE |seagull| contributors can call this function");
+        _;
+    }
+
+    modifier onlyContributor() {
+        require(isFixedAlphaContributor[msg.sender] || isVariableSeagullContributor[msg.sender] || isGrantRecipient[msg.sender], "Only contributors can call this function");
+        _;
+    }
+
+    function mint(uint256 amount, string memory zkIdString) public {
+        require(amount > 0, "Amount must be greater than 0");
+
+        totalSupply += amount;
+        balanceOf[msg.sender] += amount;
+        zkId[msg.sender] = zkIdString;
+
+        emit Minted(msg.sender, amount);
+    }
+
+    function burn(uint256 amount) public {
+        require(amount > 0, "Amount must be greater than 0");
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+
+        totalSupply -= amount;
+        balanceOf[msg.sender] -= amount;
+        burnedAmount[msg.sender] += amount;
+
+        emit Burned(msg.sender, amount);
+    }
+
+    function setFixedAlphaContributor(address account, bool status) public onlyOwner {
+        isFixedAlphaContributor[account] = status;
+    }
+
+    function setVariableSeagullContributor(address account, bool status) public onlyOwner {
+        isVariableSeagullContributor[account] = status;
+    }
+
+    function setGrantRecipient(address account, bool status) public onlyOwner {
+        isGrantRecipient[account] = status;
+    }
+
+    function mintINTForProtocol(uint256 amount) public onlyContributor {
+        require(amount > 0, "Amount must be greater than 0");
+        require(timechain > 0, "No more timechains available for minting");
+
+        require(block.timestamp % timechainDuration == 0, "Cannot mint INT until the current timechain is completed");
+
+        uint256 slashAmount = amount / 50; // 2% slash from the minting pool
+        burningPool += slashAmount;
+        timechain--;
+
+        totalSupply += amount;
+        balanceOf[msg.sender] += amount;
+        emit Minted(msg.sender, amount);
+    }
+}
