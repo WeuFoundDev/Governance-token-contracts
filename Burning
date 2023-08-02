@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+contract BurningPool {
+    using SafeMath for uint256;
+
+    address public owner;
+    uint256 public totalBurnedTokens;
+    uint256 public burningPoolBalance;
+    uint256 public timechain;
+    uint256 public timechainDuration;
+
+    mapping(address => uint256) public contributionAmount;
+    mapping(address => uint256) public lastContributionTime;
+    mapping(address => uint256) public slashPercentage;
+
+    event TokensBurned(address indexed account, uint256 amount);
+    event Contribution(address indexed account, uint256 amount);
+
+    constructor() {
+        owner = msg.sender;
+        timechain = 50;
+        timechainDuration = 7 days;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the contract owner can call this function");
+        _;
+    }
+
+    modifier nonReentrant() {
+        require(!_reentrantGuard, "Reentrant call");
+        _reentrantGuard = true;
+        _;
+        _reentrantGuard = false;
+    }
+
+    bool private _reentrantGuard;
+
+    function contribute() external payable nonReentrant {
+        require(msg.value > 0, "Contribution must be greater than 0");
+        
+        // Update contribution amount and timestamp
+        contributionAmount[msg.sender] = contributionAmount[msg.sender].add(msg.value);
+        lastContributionTime[msg.sender] = block.timestamp;
+
+        emit Contribution(msg.sender, msg.value);
+    }
+
+    function burnTokens(uint256 amount) external onlyOwner nonReentrant {
+        require(amount > 0, "Amount must be greater than 0");
+        require(burningPoolBalance >= amount, "Insufficient burning pool balance");
+
+        // Calculate slash percentage based on remaining timechains
+        uint256 remainingTimechains = timechain.sub(block.timestamp.div(timechainDuration));
+        uint256 slash = contributionAmount[msg.sender].mul(remainingTimechains).div(50); // Slashing based on GDI proportion
+        slashPercentage[msg.sender] = slashPercentage[msg.sender].add(slash);
+
+        // Update burning pool and total burned tokens
+        burningPoolBalance = burningPoolBalance.sub(amount);
+        totalBurnedTokens = totalBurnedTokens.add(amount);
+
+        emit TokensBurned(msg.sender, amount);
+    }
+
+    function adjustSlashPercentage(address account, uint256 newPercentage) external onlyOwner {
+        slashPercentage[account] = newPercentage;
+    }
+
+    function adjustBurningPoolBalance(uint256 newBalance) external onlyOwner {
+        burningPoolBalance = newBalance;
+    }
+}
