@@ -1,65 +1,53 @@
-## Minting Contract - Readme
+1`// SPDX-License-Identifier: MIT`: This comment specifies the license under which the contract code is published. In this case, it indicates the MIT license.
 
-### Introduction
-This Solidity contract represents a decentralized system for managing the "INT" token (Intelligent Token). The contract facilitates token minting, burning, staking, and unstaking while ensuring role-based access control for various contributors. It keeps track of token balances, burned amounts, and zkIds associated with addresses.
+2. `pragma solidity ^0.8.0;`: This line specifies the Solidity compiler version that should be used to compile the contract. The contract is written using Solidity version 0.8.0.
 
-### License
-This contract is published under the MIT License.
+3. `contract minting { ... }`: This defines the main `minting` contract. The contract allows minting and burning of tokens, role-based access control, and keeps track of various data using mappings.
 
-### Compiler Version
-The contract is written using Solidity version 0.8.0.
+4. `address public owner;`: This public variable stores the Ethereum address of the owner of the contract.
 
-### Main Contract - `Minting`
-The main contract is named `Minting`. It provides the following functionalities:
+5. `uint256 public totalSupply;`: This public variable stores the total supply of tokens.
 
-#### Owner and Total Supply
-- `address public owner`: Ethereum address of the contract owner.
-- `uint256 public totalSupply`: Total supply of tokens.
+6. `uint256 public burningPool;`: This public variable stores the amount of tokens set aside for minting for a particular protocol.
 
-#### Minting and Burning
-- `function mint(uint256 amount, string memory zkIdString) public`: Allows an address to mint new tokens. Increases total supply and caller's balance. Emits the `Minted` event.
-- `function burn(uint256 amount) public`: Allows an address to burn (destroy) tokens. Decreases total supply and caller's balance. Emits the `Burned` event.
+7. `uint256 public timechain;`: This public variable stores the number of remaining timechains.
 
-#### Staking and Unstaking
-- `mapping(address => uint256) public stakeBalance`: Stores the staked token balance for each address.
-- `function stake(uint256 amount) public`: Allows an address to stake INT tokens. Reduces regular balance and increases stake balance. Emits the `Stake` event.
-- `function unstake(uint256 amount) public`: Allows an address to unstake INT tokens. Reduces stake balance and increases regular balance. Emits the `Unstake` event.
+8. `uint256 public timechainDuration;`: This public variable stores the duration of each timechain in seconds.
 
-#### Role-Based Access Control
-- `modifier onlyOwner()`: Modifier to restrict functions to the contract owner.
-- `modifier onlyFixedAlphaContributor()`: Modifier to restrict functions to FIXED |Alpha| contributors.
-- `modifier onlyVariableSeagullContributor()`: Modifier to restrict functions to VARIABLE |seagull| contributors.
-- `modifier onlyContributor()`: Modifier to restrict functions to contributors (FIXED |Alpha|, VARIABLE |seagull|, or grant recipients).
+9. `mapping(address => uint256) public balanceOf;`: This mapping stores the balance of tokens for each address.
 
-#### Contributor Types
-- `mapping(address => bool) public isFixedAlphaContributor`: Maps addresses to FIXED |Alpha| contributor status.
-- `mapping(address => bool) public isVariableSeagullContributor`: Maps addresses to VARIABLE |seagull| contributor status.
-- `mapping(address => bool) public isGrantRecipient`: Maps addresses to grant recipient status.
-- `function setFixedAlphaContributor(address account, bool status) public onlyOwner`: Allows the owner to set or unset FIXED |Alpha| contributor status for an address.
-- `function setVariableSeagullContributor(address account, bool status) public onlyOwner`: Allows the owner to set or unset VARIABLE |seagull| contributor status for an address.
-- `function setGrantRecipient(address account, bool status) public onlyOwner`: Allows the owner to set or unset grant recipient status for an address.
+10. `mapping(address => uint256) public burnedAmount;`: This mapping stores the amount of tokens burned by each address.
 
-#### Timechains
-- `uint256 public burningPool`: Amount of tokens set aside for minting for a particular protocol.
-- `uint256 public timechain`: Number of remaining timechains.
-- `uint256 public timechainDuration`: Duration of each timechain in seconds.
-- `function mintINTForProtocol(uint256 amount) public onlyContributor`: Allows contributors to mint new tokens for a protocol, enforcing conditions such as timechain availability and completion.
+11. `mapping(address => string) public zkId;`: This mapping stores a zkId (a string identifier) for each address.
 
-#### Events
-- `event Minted(address indexed account, uint256 amount)`: Emitted when tokens are minted.
-- `event Burned(address indexed account, uint256 amount)`: Emitted when tokens are burned.
-- `event Stake(address indexed account, uint256 amount)`: Emitted when tokens are staked.
-- `event Unstake(address indexed account, uint256 amount)`: Emitted when tokens are unstaked.
+12. `mapping(address => bool) public isFixedAlphaContributor;`: This mapping stores whether an address is a FIXED |Alpha| contributor.
 
-### Contributors and Council Members
-- `mapping(address => bool) public isCouncilApproved`: Maps addresses to approved council member status.
-- `mapping(address => uint256) public approvedForTimechain`: Maps addresses to approved timechain numbers.
-- `mapping(address => bool) public hasSessionKeys`: Maps addresses to session keys provided status.
-- `modifier onlyApprovedCouncilMember()`: Modifier to restrict functions to approved council members.
-- `function approveCouncilMember(address account, uint256 timechainNumber) public onlyOwner`: Allows the owner to approve council members for specific timechains.
-- `function provideSessionKeys() public onlyApprovedCouncilMember`: Allows approved council members to provide session keys (not implemented in this contract).
+13. `mapping(address => bool) public isVariableSeagullContributor;`: This mapping stores whether an address is a VARIABLE |seagull| contributor.
 
-### Conclusion
-This contract provides a flexible and decentralized system for managing the INT token. Contributors can mint, burn, stake, and unstake tokens based on their roles. Council members can be approved for specific timechains and can potentially provide session keys for additional functionalities.
+14. `mapping(address => bool) public isGrantRecipient;`: This mapping stores whether an address is a grant recipient.
 
-Please note that this is a simplified contract and might require further security measures and considerations for a production environment.
+15. `event Minted(address indexed account, uint256 amount);`: This event is emitted when tokens are minted.
+
+16. `event Burned(address indexed account, uint256 amount);`: This event is emitted when tokens are burned.
+
+17. `constructor(uint256 initialSupply) { ... }`: This constructor initializes various variables when the contract is deployed. It sets the initial owner, total supply, balances, burning pool, timechain settings, and more.
+
+18. `modifier onlyOwner() { ... }`: This modifier restricts certain functions to be callable only by the contract owner.
+
+19. `modifier onlyFixedAlphaContributor() { ... }`: This modifier restricts certain functions to be callable only by FIXED |Alpha| contributors.
+
+20. `modifier onlyVariableSeagullContributor() { ... }`: This modifier restricts certain functions to be callable only by VARIABLE |seagull| contributors.
+
+21. `modifier onlyContributor() { ... }`: This modifier restricts certain functions to be callable by contributors (either FIXED |Alpha|, VARIABLE |seagull|, or grant recipients).
+
+22. `function mint(uint256 amount, string memory zkIdString) public { ... }`: This function allows an address to mint new tokens, increasing the total supply and the caller's balance.
+
+23. `function burn(uint256 amount) public { ... }`: This function allows an address to burn (destroy) tokens, decreasing the total supply and the caller's balance.
+
+24. `function setFixedAlphaContributor(address account, bool status) public onlyOwner { ... }`: This function allows the owner to set or unset FIXED |Alpha| contributor status for an address.
+
+25. `function setVariableSeagullContributor(address account, bool status) public onlyOwner { ... }`: This function allows the owner to set or unset VARIABLE |seagull| contributor status for an address.
+
+26. `function setGrantRecipient(address account, bool status) public onlyOwner { ... }`: This function allows the owner to set or unset grant recipient status for an address.
+
+27. `function mintINTForProtocol(uint256 amount) public onlyContributor { ... }`: This function allows contributors to mint new tokens for a protocol, while enforcing conditions such as timechain availability and completion.
