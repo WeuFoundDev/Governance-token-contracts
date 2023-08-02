@@ -1,5 +1,5 @@
 
-
+ 
 ### Introduction
 This Solidity contract represents a decentralized burning pool system, where contributors can contribute tokens to the pool, and the contract owner can burn tokens from the pool. The contract is designed to prevent reentrancy attacks and ensure safe arithmetic operations using the SafeMath library from OpenZeppelin Contracts.
 
