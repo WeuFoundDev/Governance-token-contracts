@@ -1,4 +1,4 @@
-## <span style="color:blue">## BurningPool Contract - Readme
+
 
 ### Introduction
 This Solidity contract represents a decentralized burning pool system, where contributors can contribute tokens to the pool, and the contract owner can burn tokens from the pool. The contract is designed to prevent reentrancy attacks and ensure safe arithmetic operations using the SafeMath library from OpenZeppelin Contracts.
@@ -54,4 +54,4 @@ The main contract is named `BurningPool`. It provides the following functionalit
 - `function adjustBurningPoolBalance(uint256 newBalance) external onlyOwner`: Allows the contract owner to adjust the burning pool balance.
 
 ### Conclusion
-This contract provides a secure and decentralized mechanism for contributors to contribute tokens to the burning pool, and the owner to burn tokens when needed. The contract ensures safe arithmetic operations and protects against reentrancy attacks using the provided reentrant guard.</span>
+This contract provides a secure and decentralized mechanism for contributors to contribute tokens to the burning pool, and the owner to burn tokens when needed. The contract ensures safe arithmetic operations and protects against reentrancy attacks using the provided reentrant guard.
