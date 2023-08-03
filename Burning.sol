@@ -4,14 +4,17 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./Iint.sol";
-
+import "./Minting.sol";
+import "./IMinting.sol";
+import "./IGlipVault.sol";
 contract TimechainProtocol is ReentrancyGuard{
     // Define the structure for the protocol's Burning pool
     struct BurningPool {
         uint256 totalInputs;
         uint256 timeChainsLeft;
         mapping(uint=>mapping(uint=>uint)) slashingPercentage;//slashingpercent[number of investment][Amount]=slashpercent
-        mapping(uint => uint)amountStaked;
+        mapping(uint => uint)amountStaked;//Investment number-->amount staked
+        address Mintingaddress;
         uint256 noOfinvestments;
         address usdUsed;
         uint256 startingBlock;
@@ -22,7 +25,7 @@ contract TimechainProtocol is ReentrancyGuard{
     mapping(address => BurningPool) public BurningPools;
 
     // GLIPs vault to hold the slashed INT
-    mapping(address => uint256) public glipsVaultAmount;
+    // mapping(address => uint256) public glipsVaultAmount;
 
     address public stableCoin1;
     address public stableCoin2;
@@ -31,12 +34,15 @@ contract TimechainProtocol is ReentrancyGuard{
     address public glipsVault;
     Iint public intToken;
     address public owner;
-    constructor(address _stableCoin1,address _stableCoin2,address _stableCoin3,address _stableCoin4,address _intToken) {
+    address public WeuFoundation;
+    constructor(address _stableCoin1,address _stableCoin2,address _stableCoin3,address _stableCoin4,address _intToken,address weuFoundation,address _glipsVault) {
         stableCoin1 = _stableCoin1;
         stableCoin2=_stableCoin2;
         stableCoin3=_stableCoin3;
         stableCoin4=_stableCoin4;
         intToken=Iint(_intToken);
+        WeuFoundation= weuFoundation;
+        glipsVault =_glipsVault;
         owner = msg.sender;
     }
 
@@ -59,6 +65,10 @@ contract TimechainProtocol is ReentrancyGuard{
         BurningPools[_protocolAddress].amountStaked[1]=_totalamount;
         BurningPools[_protocolAddress].usdUsed=usdUsed;
         BurningPools[_protocolAddress].startingBlock = block.timestamp;
+        Minting minting=new Minting();
+        address contaddress=address(minting);
+        IMinting(minting).initialize(usdUsed, WeuFoundation, address(intToken), _protocolAddress);
+        BurningPools[_protocolAddress].Mintingaddress=contaddress;
         //transfer the usd to this account,before that he need to give the approval for this contract
         IERC20(usdUsed).transferFrom(msg.sender,address(this),_totalamount);
 
@@ -69,15 +79,17 @@ contract TimechainProtocol is ReentrancyGuard{
         require(_protocolAddress!=address(0),"The address cannot be equal to zero address");
         require(_totalamount != 0,"the given amount cannot be equal to zero ");
         BurningPool storage pool = BurningPools[_protocolAddress];
-
+        require(pool.noOfinvestments != 0,"The no of investments cannot be equal to zero ");
+        require(pool.Mintingaddress != address(0),"The pool Haven't initialized");
         // Calculate the slashing percentage for the new supply of INT
         uint256 slashingPercentage = 100 / pool.timeChainsLeft;
 
         // Update the Burning pool data with the new inputs and slashing percentage
         pool.totalInputs += _totalamount;
         pool.noOfinvestments +=1;
-        pool.amountStaked[1]=_totalamount;
+        pool.amountStaked[pool.noOfinvestments]=_totalamount;
         pool.slashingPercentage[pool.noOfinvestments][_totalamount]=slashingPercentage;
+        IMinting(pool.Mintingaddress).InceaseMaxSupply(_totalamount);
         IERC20(pool.usdUsed).transferFrom(msg.sender,address(this),_totalamount);
         
     }
@@ -100,7 +112,9 @@ contract TimechainProtocol is ReentrancyGuard{
         // Update the Burning pool's total inputs after slashing
         pool.totalslashedAmount += slashedAmount;
          // Add the slashed amount to the GLIPs vault
-        glipsVaultAmount[msg.sender] += slashedAmount;
+        // glipsVaultAmount[msg.sender] += slashedAmount;
+        IERC20(pool.usdUsed).approve(glipsVault,slashedAmount);
+        IGlipVault(glipsVault).ReceiveAmount(_protocolAddress,slashedAmount,pool.usdUsed);
         // Decrease the number of timechains left
         pool.timeChainsLeft -= completedTimeChains;
         //send the amount to the glipsVault
@@ -116,11 +130,14 @@ contract TimechainProtocol is ReentrancyGuard{
     }
      
 
-    function burnandClaim(uint256 amount) external nonReentrant  {
+    function burnandClaim(address _protocol,uint256 amount) external nonReentrant  {
         require(amount!=0,"The address cannot be equal to zero address");
         require(intToken.balanceOf(msg.sender)>= amount,"Not Sufficient Amount in your wallet");
         require(IERC20(stableCoin1).balanceOf(address(this))>=amount || IERC20(stableCoin2).balanceOf(address(this))>=amount || IERC20(stableCoin3).balanceOf(address(this))>=amount || IERC20(stableCoin4).balanceOf(address(this))>=amount,"No sufficient Amount in the pool");
+        BurningPool storage pool = BurningPools[_protocolAddress];
+        require((block.timestamp - pool.startingBlock) >= 7 days,"The timechain had till not completed");
         address currentStableCoin = findGreatest(stableCoin1, stableCoin2, stableCoin3, stableCoin4);
+        intToken.transferFrom(msg.sender,address(this),amount);
         intToken.burn(amount);
         IERC20(currentStableCoin).transfer(msg.sender,amount);
     }
