@@ -30,16 +30,15 @@ contract TimechainProtocol is ReentrancyGuard{
     address public stableCoin1;
     address public stableCoin2;
     address public stableCoin3;
-    address public stableCoin4;
     address public glipsVault;
     Iint public intToken;
     address public owner;
     address public WeuFoundation;
-    constructor(address _stableCoin1,address _stableCoin2,address _stableCoin3,address _stableCoin4,address _intToken,address weuFoundation,address _glipsVault) {
+    constructor(address _stableCoin1,address _stableCoin2,address _stableCoin3,address _intToken,address weuFoundation,address _glipsVault) {
         stableCoin1 = _stableCoin1;
         stableCoin2=_stableCoin2;
         stableCoin3=_stableCoin3;
-        stableCoin4=_stableCoin4;
+
         intToken=Iint(_intToken);
         WeuFoundation= weuFoundation;
         glipsVault =_glipsVault;
@@ -57,7 +56,7 @@ contract TimechainProtocol is ReentrancyGuard{
         require(_totalamount != 0,"the given amount cannot be equal to zero ");
         require(BurningPools[_protocolAddress].totalInputs == 0, "Burning pool already initialized");
         require(BurningPools[_protocolAddress].noOfinvestments == 0,"The pool is already initialized");
-        require(usdUsed == stableCoin1 || usdUsed == stableCoin2 || usdUsed ==stableCoin3 || usdUsed == stableCoin4 ,"The tokem used should be any one of them");
+        require(usdUsed == stableCoin1 || usdUsed == stableCoin2 || usdUsed ==stableCoin3 ,"The tokem used should be any one of them");
         BurningPools[_protocolAddress].totalInputs=_totalamount;
         BurningPools[_protocolAddress].timeChainsLeft=50;
         BurningPools[_protocolAddress].slashingPercentage[1][_totalamount]=2;
@@ -133,28 +132,26 @@ contract TimechainProtocol is ReentrancyGuard{
     function burnandClaim(address _protocol,uint256 amount) external nonReentrant  {
         require(amount!=0,"The address cannot be equal to zero address");
         require(intToken.balanceOf(msg.sender)>= amount,"Not Sufficient Amount in your wallet");
-        require(IERC20(stableCoin1).balanceOf(address(this))>=amount || IERC20(stableCoin2).balanceOf(address(this))>=amount || IERC20(stableCoin3).balanceOf(address(this))>=amount || IERC20(stableCoin4).balanceOf(address(this))>=amount,"No sufficient Amount in the pool");
+        require(IERC20(stableCoin1).balanceOf(address(this))>=amount || IERC20(stableCoin2).balanceOf(address(this))>=amount || IERC20(stableCoin3).balanceOf(address(this))>=amount );
         BurningPool storage pool = BurningPools[_protocolAddress];
         require((block.timestamp - pool.startingBlock) >= 7 days,"The timechain had till not completed");
-        address currentStableCoin = findGreatest(stableCoin1, stableCoin2, stableCoin3, stableCoin4);
+        address currentStableCoin = findGreatest(stableCoin1, stableCoin2, stableCoin3);
         intToken.transferFrom(msg.sender,address(this),amount);
         intToken.burn(amount);
         IERC20(currentStableCoin).transfer(msg.sender,amount);
     }
 
-    function findGreatest(address _stableCoin1,address _stableCoin2,address _stableCoin3,address _stableCoin4) public view  returns (address) {
+    function findGreatest(address _stableCoin1,address _stableCoin2,address _stableCoin3) public view  returns (address) {
         // Using if-else statements
         address greatestCoin;
 
-        if ( IERC20(_stableCoin1).balanceOf(address(this))>= IERC20(_stableCoin2).balanceOf(address(this)) && IERC20(_stableCoin1).balanceOf(address(this)) >= IERC20(_stableCoin3).balanceOf(address(this)) && IERC20(_stableCoin1).balanceOf(address(this)) >= IERC20(_stableCoin4).balanceOf(address(this))) {
+        if ( IERC20(_stableCoin1).balanceOf(address(this))>= IERC20(_stableCoin2).balanceOf(address(this)) && IERC20(_stableCoin1).balanceOf(address(this)) >= IERC20(_stableCoin3).balanceOf(address(this)) ) {
             greatestCoin = _stableCoin1;
-        } else if (IERC20(_stableCoin2).balanceOf(address(this)) >= IERC20(_stableCoin1).balanceOf(address(this)) && IERC20(_stableCoin2).balanceOf(address(this)) >= IERC20(_stableCoin3).balanceOf(address(this)) && IERC20(_stableCoin2).balanceOf(address(this)) >= IERC20(_stableCoin4).balanceOf(address(this))) {
+        } else if (IERC20(_stableCoin2).balanceOf(address(this)) >= IERC20(_stableCoin1).balanceOf(address(this)) && IERC20(_stableCoin2).balanceOf(address(this)) >= IERC20(_stableCoin3).balanceOf(address(this))) {
             greatestCoin = _stableCoin2;
-        } else if (IERC20(_stableCoin3).balanceOf(address(this)) >= IERC20(_stableCoin1).balanceOf(address(this)) && IERC20(_stableCoin3).balanceOf(address(this)) >= IERC20(_stableCoin2).balanceOf(address(this)) && IERC20(_stableCoin3).balanceOf(address(this)) >= IERC20(_stableCoin4).balanceOf(address(this))) {
+        } else{
             greatestCoin = _stableCoin3;
-        } else {
-            greatestCoin = _stableCoin4;
-        }
+        } 
 
         return greatestCoin;
     }
